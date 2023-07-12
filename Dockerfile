@@ -1,9 +1,20 @@
-FROM node:current-alpine
+FROM node:20.4-alpine AS base
 
-USER node
+FROM base AS builder
 
-ADD --chown=node:node . /app/
 WORKDIR /app/
-RUN npm ci --only=prod
 
-CMD npm start
+ADD package.json package-lock.json .
+RUN npm ci
+ADD index.ts tsconfig.json .
+RUN npm run build
+
+FROM base
+
+WORKDIR /app/
+ADD package.json package-lock.json .
+RUN npm ci --omit=dev
+ADD . .
+COPY --from=builder /app/index.js .
+
+CMD node index.js
